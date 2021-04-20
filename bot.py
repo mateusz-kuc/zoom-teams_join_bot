@@ -1,6 +1,10 @@
 import pickle
 import time
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 import schedule
 class Meeting:
     def __init__(self,start_time,day_name,link,subject_name=None):
@@ -21,6 +25,11 @@ class Meeting:
 
 
 
+def start_browser():
+    #I want to check what browser user will be use
+    PATH = "C:\Program Files (x86)\chromedriver.exe"
+    driver = webdriver.Chrome(PATH)
+    return driver
 
 def join_meeting(link, subject_name,start_time,day):
     print("Working")
@@ -28,31 +37,33 @@ def join_meeting(link, subject_name,start_time,day):
     if subject_name == None:
         join_meeting_Zoom(link)
     else:
-        pass
+        join_meeting_Teams(subject_name,link)
 
 
 
 
 def join_meeting_Zoom(link):
     print("Zoom")
-    PATH = "C:\Program Files (x86)\chromedriver.exe"
 
-    driver = webdriver.Chrome(PATH)
+    driver = start_browser()
+
+
     driver.get(link)
     time.sleep(15)
     driver.quit()
 
-def join_meeting_Teams(subject_name):
+def join_meeting_Teams(subject_name,link):
     print("MS Teams")
-    PATH = "C:\Program Files (x86)\chromedriver.exe"
+    driver = start_browser()
+    driver.get(link)
+    #loging
+    log_in_btn= driver.find_element_by_id("mectrl_main_trigger")
+    driver.implicitly_wait(5)
+    log_in_btn.click()
 
-    driver = webdriver.Chrome(PATH)
-    driver.get("")
-    time.sleep(15)
-    driver.quit()
 
 def working_bot():
-    days_of_week = {"monday":schedule.every().monday,
+    '''days_of_week = {"monday":schedule.every().monday,
     "tuesday":schedule.every().tuesday,
     "wednesday":schedule.every().wednesday,
     "thursday":schedule.every().thursday,
@@ -61,33 +72,27 @@ def working_bot():
     "sunday":schedule.every().sunday
 
     }
+    '''
     for meeting in meetings:
         start_time = meeting.start_time
         link = meeting.link
         day = meeting.day_name
         subject_name = meeting.subject_name
         print(start_time,day)
-        if day.lower()=="monday":
+        if day == "monday":
             schedule.every().monday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
-			#print("Scheduled class '%s' on %s at %s"%(name,day,start_time))
-        if day.lower()=="tuesday":
-            schedule.every().tuesday.at(start_time).do(join_meeting,subject_name,start_time,day)
-			#print("Scheduled class '%s' on %s at %s"%(name,day,start_time))
-        if day.lower()=="wednesday":
-            schedule.every().wednesday.at(start_time).do(join_meeting,subject_name,start_time,day)
-			#print("Scheduled class '%s' on %s at %s"%(name,day,start_time
-        if day.lower()=="thursday":
-            schedule.every().thursday.at(start_time).do(join_meeting,subject_name,start_time,day)
-		#	print("Scheduled class '%s' on %s at %s"%(name,day,start_time)
-        if day.lower()=="friday":
-            schedule.every().friday.at(start_time).do(join_meeting,subject_name,start_time,day)
-		#	print("Scheduled class '%s' on %s at %s"%(name,day,start_time)
-        if day.lower()=="saturday":
-            schedule.every().saturday.at(start_time).do(join_meeting,subject_name,start_time,day)
-		#	print("Scheduled class '%s' on %s at %s"%(name,day,start_time)
-        if day.lower()=="sunday":
+        elif day == "tuesday":
+            schedule.every().tuesday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
+        elif day == "wednesday":
+            schedule.every().wednesday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
+        elif day == "thursday":
+            schedule.every().thursday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
+        elif day == "friday":
+            schedule.every().friday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
+        elif day == "saturday":
+            schedule.every().saturday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
+        elif day == "sunday":
             schedule.every().sunday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
-		#	print("Scheduled class '%s' on %s at %s"%(name,day,start_time))
 
     while True:
         schedule.run_pending()
@@ -102,11 +107,22 @@ def new_meeting():
     check = False
     print("Create new meeting")
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    start_time = input("Start time meeting format 24h[00:00] : ")
+    time = input("Start time meeting format 24h[00:00] : ")
+    time = time.split(":")
+    try:
+        print("Working")
+        time[0]=int(time[0])
+        time[1]=int(time[1])
+
+        if time[0]>=0 and time[0]<24 and time[1]>0 and time[1]<60:
+            start_time = time[0] +":"+ time[1]
+    except:
+        print("Uncorrect time format")
+
 
     day = input("In what day you have meeting : ")
-    if day in week:
-        day = day_name
+    if day.lower() in week:
+        day_name = day.lower()
     else:
         print("This is not name of day")
     platform = input("This meeating will by on Zoom or MS Teams : ")
@@ -115,7 +131,7 @@ def new_meeting():
         subject_name = input("Subject name :  ")
         try:
             new_meeting = Meeting(start_time,day_name,link,subject_name)
-            #print(new_meeting.start_time,new_meeting.link,new_meeting.subject_name)
+            print(new_meeting.start_time,new_meeting.link,new_meeting.subject_name)
             meetings.append(new_meeting)
             return
 
