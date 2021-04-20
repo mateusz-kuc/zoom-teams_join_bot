@@ -24,6 +24,37 @@ class Meeting:
         return template.format(self.start_time, self.day_name, self.link, self.subject_name)
 
 
+class User:
+    def __init__(self,email,password):
+        self.email = email
+        self.password = password
+
+    def __str__(self):
+        template = '''
+        Email: {0}
+        Password: {1}
+
+        '''
+        return template.format(self.email, self.password)
+
+
+def new_user():
+    global user
+    if user ==None:
+        email = input("Write your email adres : ")
+        password = input ("Write your password : ")
+        user = User(email,password)
+    else:
+        print("User already exist edit data about it")
+
+def edit_user():
+    print(user)
+    new_email = input("Write your email adres or . if you don't want change it : ")
+    new_password = input ("Write your password or . if you don't want change it : ")
+    if new_email !=".":
+        user.email = new_email
+    if new_password != ".":
+        user.password = new_password
 
 def start_browser():
     #I want to check what browser user will be use
@@ -41,7 +72,8 @@ def join_meeting(link, subject_name,start_time,day):
 
 
 
-
+def join_class():
+    pass
 def join_meeting_Zoom(link):
     print("Zoom")
 
@@ -56,11 +88,36 @@ def join_meeting_Teams(subject_name,link):
     print("MS Teams")
     driver = start_browser()
     driver.get(link)
-    #loging
     log_in_btn= driver.find_element_by_id("mectrl_main_trigger")
     driver.implicitly_wait(5)
     log_in_btn.click()
+    driver.implicitly_wait(5)
+    #loging
+    emailField = driver.find_element_by_xpath('//*[@id="i0116"]')
+    emailField.click()
+    emailField.send_keys(user.email)
+    driver.find_element_by_xpath('//*[@id="idSIButton9"]').click() #Next button
+    time.sleep(5)
+    passwordField = driver.find_element_by_xpath('//*[@id="passwordInput"]')
+    passwordField.click()
+    passwordField.send_keys(user.password)
+    driver.find_element_by_xpath('//*[@id="submitButton"]').click() #remember login
+    time.sleep(5)
+    driver.find_element_by_xpath('//*[@id="idSIButton9"]').click()
+    time.sleep(8)
 
+
+    #join class new function ??
+    classes_available = driver.find_elements_by_class_name("name-channel-type")
+
+    for i in classes_available:
+    	if "cell biology" in i.get_attribute('innerHTML').lower():
+    		print("JOINING CLASS ","cell biology")
+    		i.click()
+    		break
+
+    join_class()
+    #driver.find_element_by_xpath('//*[@class="use-app-lnk"]').click()
 
 def working_bot():
     '''days_of_week = {"monday":schedule.every().monday,
@@ -78,7 +135,7 @@ def working_bot():
         link = meeting.link
         day = meeting.day_name
         subject_name = meeting.subject_name
-        print(start_time,day)
+
         if day == "monday":
             schedule.every().monday.at(start_time).do(join_meeting,link, subject_name,start_time,day)
         elif day == "tuesday":
@@ -107,18 +164,17 @@ def new_meeting():
     check = False
     print("Create new meeting")
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    time = input("Start time meeting format 24h[00:00] : ")
-    time = time.split(":")
+    time_input = input("Start time meeting format 24h[00:00] : ")
+    time = time_input.split(":")
     try:
-        print("Working")
         time[0]=int(time[0])
         time[1]=int(time[1])
+        print(time)
 
-        if time[0]>=0 and time[0]<24 and time[1]>0 and time[1]<60:
-            start_time = time[0] +":"+ time[1]
+        if time[0]>=0 and time[0]<24 and time[1]>=0 and time[1]<60:
+            start_time = time_input
     except:
         print("Uncorrect time format")
-
 
     day = input("In what day you have meeting : ")
     if day.lower() in week:
@@ -130,7 +186,7 @@ def new_meeting():
         link = "https://www.microsoft.com/pl-pl/microsoft-teams/group-chat-software"
         subject_name = input("Subject name :  ")
         try:
-            new_meeting = Meeting(start_time,day_name,link,subject_name)
+            new_meeting = Meeting(start_time,day_name,link,subject_name.lower())
             print(new_meeting.start_time,new_meeting.link,new_meeting.subject_name)
             meetings.append(new_meeting)
             return
@@ -187,6 +243,17 @@ def save_meetings(file_name):
     print('Saving meetings')
     with open(file_name,'wb') as out_file:
         pickle.dump(meetings,out_file)
+# I need change it later
+def load_user(file_name):
+    print('Loading meetings')
+    global user
+    with open(file_name,'rb') as input_file:
+        user=pickle.load(input_file)
+
+def save_user(file_name):
+    print('Saving meetings')
+    with open(file_name,'wb') as out_file:
+        pickle.dump(user,out_file)
 # Change to English
 menu='''Bot do dołączania do spotkań
 
@@ -194,18 +261,24 @@ menu='''Bot do dołączania do spotkań
 2. Wyświetl wszystkie
 3. Edytuj spotkanie
 4. Włącz bota
-5. Wyjście z programu
-
+5. Wprowadź użytkownika
+6.Edytuj dane użytkownika
+7. Wyjście z programu
 Wprowadź polecenie: '''
 
 filename='meetings.pickle'
+file_user='user.pickle'
 try:
     load_meetings(filename)
     print("loading from file")
 except:
     print("File with meetings don't exist")
     meetings=[]
-
+try:
+    load_user(file_user)
+except:
+    print("File with with user don't exist")
+    user = None
 
 while True:
     print("______________________________________________________")
@@ -220,5 +293,10 @@ while True:
     elif command=="4":
         working_bot()
     elif command=="5":
+        new_user()
+    elif command=="6":
+        edit_user()
+    elif command=="7":
         save_meetings(filename)
+        save_user(file_user)
         break
