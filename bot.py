@@ -25,17 +25,20 @@ class Meeting:
 
 
 class User:
-    def __init__(self,email,password):
+    def __init__(self,email,password,browser, source):
         self.email = email
         self.password = password
+        self.browser = browser
+        self.source = source
 
     def __str__(self):
         template = '''
         Email: {0}
         Password: {1}
-
+        Browser: {2}
+        Source: {3}
         '''
-        return template.format(self.email, self.password)
+        return template.format(self.email, self.password, self.browser, self.source)
 
 
 def new_user():
@@ -43,23 +46,49 @@ def new_user():
     if user ==None:
         email = input("Write your email adres : ")
         password = input ("Write your password : ")
-        user = User(email,password)
+        browser = input ("Write your browser (chrome or edge) : ")
+        browser = browser.lower()
+        source = input ("Write your source : ")
+        if browser=="chrome" or browser=="edge":
+            user = User(email,password,browser,source)
+        else:
+            print("Uncorrect name of browser")
     else:
         print("User already exist edit data about it")
 
 def edit_user():
+    global user
+    browser_list = ["chrome","edge","."]
     print(user)
     new_email = input("Write your email adres or . if you don't want change it : ")
     new_password = input ("Write your password or . if you don't want change it : ")
+    new_browser = input ("Write your browser (chrome or firefox) or . if you don't want change it: ")
+    browser = new_browser.lower()
+    new_source = input ("Write your source or . if you don't want change it: ")
+    if browser in browser_list:
+        if browser !=".":
+            user.browser = browser
+    else:
+        print("Uncorrect name of browser")
     if new_email !=".":
         user.email = new_email
     if new_password != ".":
         user.password = new_password
+    if browser !=".":
+        user.browser = browser
+    if new_source != ".":
+        user.source = new_source
 
 def start_browser():
-    #I want to check what browser user will be use
-    PATH = "C:\Program Files (x86)\chromedriver.exe"
-    driver = webdriver.Chrome(PATH)
+    if user.browser=="chrome":
+        browser_path = r"\chromedriver.exe"
+        PATH = user.source+browser_path
+        driver = webdriver.Chrome(PATH)
+    elif user.browser=="edge":
+        browser_path = r"\msedgedriver.exe"
+        PATH = user.source+browser_path
+        driver = webdriver.Edge(PATH)
+
     return driver
 
 def join_meeting(link, subject_name,start_time,day):
@@ -72,8 +101,6 @@ def join_meeting(link, subject_name,start_time,day):
 
 
 
-def join_class():
-    pass
 def join_meeting_Zoom(link):
     print("Zoom")
 
@@ -104,10 +131,15 @@ def join_meeting_Teams(subject_name,link):
     driver.find_element_by_xpath('//*[@id="submitButton"]').click() #remember login
     time.sleep(5)
     driver.find_element_by_xpath('//*[@id="idSIButton9"]').click()
-    time.sleep(8)
+    time.sleep(14)
 
 
     #join class new function ??
+
+
+    join_class(driver,subject_name)
+    #driver.find_element_by_xpath('//*[@class="use-app-lnk"]').click()
+def join_class(driver,subject_name):
     classes_available = driver.find_elements_by_class_name("name-channel-type")
 
     for i in classes_available:
@@ -115,10 +147,29 @@ def join_meeting_Teams(subject_name,link):
     		print("JOINING CLASS ","cell biology")
     		i.click()
     		break
+    try:
+        joinbtn = driver.find_element_by_class_name("ts-calling-join-button")
+        joinbtn.click()
+        time.sleep(60)
+    except:
+        print("Meeting was cancel")
+        return
+            #to trzeba inaczej rozwiązać
 
-    join_class()
-    #driver.find_element_by_xpath('//*[@class="use-app-lnk"]').click()
+    time.sleep(5)
 
+    webcam = driver.find_element_by_xpath('//*[@id="page-content-wrapper"]/div[1]/div/calling-pre-join-screen/div/div/div[2]/div[1]/div[2]/div/div/section/div[2]/toggle-button[1]/div/button/span[1]')
+    if(webcam.get_attribute('title')=='Turn camera off'):
+        webcam.click()
+        time.sleep(1)
+
+        microphone = driver.find_element_by_xpath('//*[@id="preJoinAudioButton"]/div/button/span[1]')
+    if(microphone.get_attribute('title')=='Mute microphone'):
+        microphone.click()
+
+        time.sleep(1)
+        joinnowbtn = driver.find_element_by_xpath('//*[@id="page-content-wrapper"]/div[1]/div/calling-pre-join-screen/div/div/div[2]/div[1]/div[2]/div/div/section/div[1]/div/div/button')
+        joinnowbtn.click()
 def working_bot():
     '''days_of_week = {"monday":schedule.every().monday,
     "tuesday":schedule.every().tuesday,
@@ -158,13 +209,7 @@ def working_bot():
 
 
 
-
-def new_meeting():
-    week = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
-    check = False
-    print("Create new meeting")
-    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    time_input = input("Start time meeting format 24h[00:00] : ")
+def check_time(time_input):
     time = time_input.split(":")
     try:
         time[0]=int(time[0])
@@ -172,10 +217,19 @@ def new_meeting():
         print(time)
 
         if time[0]>=0 and time[0]<24 and time[1]>=0 and time[1]<60:
-            start_time = time_input
+            return time_input
     except:
         print("Uncorrect time format")
+        return None
 
+def new_meeting():
+    week = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    print("Create new meeting")
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    time_input = input("Start time meeting format 24h[00:00] : ")
+    start_time = check_time(time_input)
+    if start_time == None:
+        return
     day = input("In what day you have meeting : ")
     if day.lower() in week:
         day_name = day.lower()
@@ -217,27 +271,53 @@ def find_meeting(time, day):
     for meeting in meetings:
         if meeting.day_name==day and meeting.start_time==time:
             return meeting
-    print("Yo don't have meeting with this data")
+    print("You don't have meeting with this data")
     return None
 
 def edit_meeting():
+    week = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
     print("Editing")
+    print("______________________________________________________")
     start_time = input("Start Time : ")
     day_name = input("Day name : ")
     meeting = find_meeting(start_time,day_name)
-    start_time = input("Start time meeting format 24h[00:00] : ")
-    meeting.start_time = start_time
-    day_name = input("In what day you have meeting : ")
+
+    if meeting == None:
+        return
+    delete_or_not = input("If you want delete meeting write yes : ")
+    if delete_or_not == "yes":
+        meetings.remove(meeting)
+        print("This meeting have been deleted")
+        return
+
+    start_time = input("Start time meeting format 24h[00:00] or . if you don't want change it: ")
+    if start_time != ".":
+        time=check_time(start_time)
+        if time!=None:
+            meeting.start_time = time
+    day = input("In what day you have meeting or . if you don't want change it: ")
+    if day.lower() in week:
+        day_name = day.lower()
+    else:
+        print("This is not name of day")
+    if day_name != ".":
+        meeting.day_name = day_name
     meeting.day_name = day_name
     if meeting.link == "https://www.microsoft.com/pl-pl/microsoft-teams/group-chat-software":
-        subject_name = input("Name of subject : ")
-        meeting.start_time = subject_name
-
+        subject_name = input("Name of subject or . if you don't want change it : ")
+        if subject_name != ".":
+            meeting.start_time = subject_name
+    else:
+        link = input("If this link uccorrect and you want change it . if you don't want change it: ")
+        if link !=".":
+            meeting.link = link
 def load_meetings(file_name):
     print('Loading meetings')
     global meetings
     with open(file_name,'rb') as input_file:
         meetings=pickle.load(input_file)
+
+
 
 def save_meetings(file_name):
     print('Saving meetings')
@@ -251,7 +331,7 @@ def load_user(file_name):
         user=pickle.load(input_file)
 
 def save_user(file_name):
-    print('Saving meetings')
+    print('Saving user')
     with open(file_name,'wb') as out_file:
         pickle.dump(user,out_file)
 # Change to English
@@ -261,9 +341,8 @@ menu='''Bot do dołączania do spotkań
 2. Wyświetl wszystkie
 3. Edytuj spotkanie
 4. Włącz bota
-5. Wprowadź użytkownika
-6.Edytuj dane użytkownika
-7. Wyjście z programu
+5.Edytuj dane użytkownika
+6. Wyjście z programu
 Wprowadź polecenie: '''
 
 filename='meetings.pickle'
@@ -279,6 +358,12 @@ try:
 except:
     print("File with with user don't exist")
     user = None
+    while user == None:
+        print("Welcome to meeting bot aplication configure bot first")
+        print("Write email and password for teams or leave empty if you don't youse MS Teams")
+        print("________________________________________________________")
+        new_user()
+save_user(file_user)
 
 while True:
     print("______________________________________________________")
@@ -293,10 +378,8 @@ while True:
     elif command=="4":
         working_bot()
     elif command=="5":
-        new_user()
-    elif command=="6":
         edit_user()
-    elif command=="7":
+    elif command=="6":
         save_meetings(filename)
         save_user(file_user)
         break
